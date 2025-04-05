@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gocolly/colly"
 	"io/ioutil"
 	"net/http"
-
 	"testing"
-
-	"github.com/gocolly/colly"
 )
 
 type Subchapter struct {
@@ -87,7 +85,6 @@ func TestScrapeHTML(t *testing.T) {
 		fmt.Println("Visiting", r.URL)
 	})
 	c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
-		// fmt.Println(e.Text)
 		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
 	})
 	err := c.Visit("http://127.0.0.1:8000/test_data/ch07.html")
