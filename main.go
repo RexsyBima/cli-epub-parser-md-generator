@@ -1,26 +1,40 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"syscall"
 
 	deepseek "github.com/cohesion-org/deepseek-go"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
 )
 
+var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting raw YouTube caption texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.`)
+
+const outputPath string = "output"
+const outputTestPath string = "output_test"
+
 var env = godotenv.Load()
 
 type Subchapter struct {
 	Title string
 	Text  string
+}
+
+type HTMLFile struct {
+	Path string
 }
 
 func NewSubchapter(title string, text string) Subchapter {
@@ -33,6 +47,22 @@ type EncodedResponse struct {
 	OriginalText string `json:"original_text"`
 	EncodedText  []int  `json:"encoded_text"`
 	TokenLength  int    `json:"token_length"`
+}
+
+func saveToMD(filename, text string) error {
+	fmt.Println("Response:", text)
+	filename = fmt.Sprintf("%s/%s.md", outputPath, filename)
+	file, err := os.Create(filename)
+	if err != nil {
+		os.Mkdir(outputPath, 0755)
+		file, err = os.Create(filename)
+	}
+	_, err = file.WriteString(string(text))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return nil
 }
 
 func scanHTMLFiles(folderPath string) ([]string, error) {
@@ -98,15 +128,111 @@ func initCheckServer(port int, description string) {
 		panic(err)
 	}
 	fmt.Println(description)
+	// err = os.Mkdir(outputPath, 0755)
+	// if err != nil {
+	// 	panic(err)
+	// }
+}
+
+// ExtractEpub extracts the contents of an EPUB file (which is a ZIP archive)
+// to the specified target directory
+func ExtractEpub(epubPath string, targetDir string) error {
+	// Create extraction directory if it doesn't exist
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create extraction directory: %v", err)
+	}
+
+	// Open the EPUB file
+	reader, err := zip.OpenReader(epubPath)
+	if err != nil {
+		return fmt.Errorf("error opening EPUB file: %v", err)
+	}
+	defer reader.Close()
+
+	// Extract each file
+	for _, file := range reader.File {
+		extractPath := filepath.Join(targetDir, file.Name)
+
+		// Create directories if needed
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(extractPath, 0755)
+			continue
+		}
+
+		// Make sure the parent directory exists
+		parentDir := filepath.Dir(extractPath)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", parentDir, err)
+		}
+
+		// Create the file
+		outFile, err := os.Create(extractPath)
+		if err != nil {
+			return fmt.Errorf("failed to create file %s: %v", extractPath, err)
+		}
+
+		// Open the zipped file
+		zipFile, err := file.Open()
+		if err != nil {
+			outFile.Close()
+			return fmt.Errorf("failed to open zipped file %s: %v", file.Name, err)
+		}
+
+		// Copy the contents
+		_, err = io.Copy(outFile, zipFile)
+		outFile.Close()
+		zipFile.Close()
+		if err != nil {
+			return fmt.Errorf("failed to extract file %s: %v", file.Name, err)
+		}
+	}
+	return nil
+}
+
+func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
+	var htmlfiles []HTMLFile
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(strings.ToLower(path), ".html") || strings.HasSuffix(strings.ToLower(path), ".htm") {
+			htmlfiles = append(htmlfiles, HTMLFile{Path: path})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return htmlfiles, nil
 }
 
 func init() {
+	// TODO: run python http server from go?
+	// cmd1 := exec.Command("python", "-m", "http.server", "8000")
+	// cmd1.Stdout = os.Stdout
+	// cmd1.Stderr = os.Stderr
+	// fmt.Println("Starting python http server on http://localhost:8000")
 	initCheckServer(8000, "server running on port 8000, python simple http server")
 	initCheckServer(8080, "server running on port 8080, python tokenizer server")
+	err := ExtractEpub("book1.epub", ".tmp")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
-	var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting raw YouTube caption texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.`)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		fmt.Println("interrupt signal received, deleting temp folder", sig)
+		os.RemoveAll(".tmp")
+		os.Exit(0)
+	}()
+	// TODO: 1. extract epub file to .temp folder, and then scan recursively for html files and put them back to .temp folder
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
 	c.OnRequest(func(r *colly.Request) {
@@ -115,13 +241,15 @@ func main() {
 	c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
 		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
 	})
-	filePath, err := scanHTMLFiles("test_data")
+	// filePath, err := scanHTMLFiles("test_data")
+	filePath, err := ScanHTMLFiles(".tmp")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	for i, file := range filePath {
-		fmt.Printf("%d: %s\n", i+1, file)
+		texts := strings.Split(file.Path, "/")
+		fmt.Printf("%d: %s\n", i+1, texts[len(texts)-1])
 	}
 	var userInput string
 	fmt.Println("choose a chapter based on number")
@@ -131,7 +259,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1])
+	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1].Path)
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Request URL: %v | failed with response %v", r.Request.URL, err)
 	})
@@ -169,5 +297,9 @@ func main() {
 	// Print the response
 	output := response.Choices[0].Message.Content
 	fmt.Println("Response:", output)
-
+	err = saveToMD(Subchapters[0].Title, output)
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(".temp")
 }

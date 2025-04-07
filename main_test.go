@@ -4,28 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gocolly/colly"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/gocolly/colly"
 )
 
-func TestExtractEpub(t *testing.T) {
-	t.Skip("skipping for now...")
-	tests := []struct {
-		filename string // description of this test case
-	}{
-		struct{ filename string }{"book1.epub"},
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.filename, func(t *testing.T) {
-			fmt.Println(tt.filename)
-		})
-	}
-}
-
 func TestScrapeHTML(t *testing.T) {
+	t.Skip("skipping for now...")
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
 	c.OnRequest(func(r *colly.Request) {
@@ -99,6 +90,7 @@ func TestCheckToken(t *testing.T) {
 }
 
 func TestScanFolder(t *testing.T) {
+	t.Skip("skipping for now...")
 	filePath, err := scanHTMLFiles("test_data")
 	if err != nil {
 		t.Fatal(err)
@@ -106,5 +98,94 @@ func TestScanFolder(t *testing.T) {
 	for i, file := range filePath {
 		fmt.Printf("%d: %s\n", i+1, file)
 	}
+}
 
+func TestMkdir(t *testing.T) {
+	t.Skip("skipping for now...")
+	err := os.Mkdir(outputTestPath, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(outputTestPath)
+}
+
+func TestSaveTextMD(t *testing.T) {
+	t.Skip()
+	output := "some text"
+	fmt.Println("Response:", output)
+	filename := fmt.Sprintf("%s/%s.md", outputTestPath, "test")
+	file, err := os.Create(filename)
+	if err != nil {
+		os.Mkdir(outputTestPath, 0755)
+		file, err = os.Create(filename)
+	}
+	// os.ReadDir()
+	_, err = file.WriteString(string(output))
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	defer os.Remove(outputTestPath)
+}
+
+func TestExtractEpub(t *testing.T) {
+	t.Skip()
+	ExtractEpub("book1.epub", ".temp")
+}
+
+func TestScanHTML(t *testing.T) {
+	t.Skip()
+	type HTMLFile struct {
+		Path string
+	}
+	ScanHTMLFiles := func(rootDir string) ([]HTMLFile, error) {
+		var htmlfiles []HTMLFile
+		err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(strings.ToLower(path), ".html") || strings.HasSuffix(strings.ToLower(path), ".htm") {
+				htmlfiles = append(htmlfiles, HTMLFile{Path: path})
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return htmlfiles, nil
+	}
+	files, err := ScanHTMLFiles(".temp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		fmt.Println(file.Path)
+	}
+}
+
+func TestExtractTitle(t *testing.T) {
+	t.Skip()
+	data := ".temp/OEBPS/toc01.html"
+	title := strings.Split(data, "/")
+	fmt.Println(strings.Split(data, "/")[len(title)-1])
+}
+
+func TestUniqueFolderName(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpDirPath := filepath.Join(cwd, ".tmp")
+	if err := os.MkdirAll(tmpDirPath, 0755); err != nil {
+		log.Fatal(err)
+	}
+	result, err := os.MkdirTemp(tmpDirPath, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(result)
+	os.MkdirAll(result, 0755)
 }
