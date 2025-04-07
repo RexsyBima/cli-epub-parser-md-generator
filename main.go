@@ -118,22 +118,6 @@ func checkToken(text string) (EncodedResponse, error) {
 	return result, nil
 }
 
-func initCheckServer(port int, description string) {
-	port_conv := strconv.Itoa(port)
-	url := "http://127.0.0.1:" + port_conv + "/"
-	req, err := http.NewRequest("GET", url, nil)
-	client := &http.Client{}
-	_, err = client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(description)
-	// err = os.Mkdir(outputPath, 0755)
-	// if err != nil {
-	// 	panic(err)
-	// }
-}
-
 // ExtractEpub extracts the contents of an EPUB file (which is a ZIP archive)
 // to the specified target directory
 func ExtractEpub(epubPath string, targetDir string) error {
@@ -210,6 +194,17 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 }
 
 func init() {
+	initCheckServer := func(port int, description string) {
+		port_conv := strconv.Itoa(port)
+		url := "http://127.0.0.1:" + port_conv + "/"
+		req, err := http.NewRequest("GET", url, nil)
+		client := &http.Client{}
+		_, err = client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(description)
+	}
 	// TODO: run python http server from go?
 	// cmd1 := exec.Command("python", "-m", "http.server", "8000")
 	// cmd1.Stdout = os.Stdout
@@ -232,7 +227,6 @@ func main() {
 		os.RemoveAll(".tmp")
 		os.Exit(0)
 	}()
-	// TODO: 1. extract epub file to .temp folder, and then scan recursively for html files and put them back to .temp folder
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
 	c.OnRequest(func(r *colly.Request) {
@@ -294,12 +288,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// Print the response
 	output := response.Choices[0].Message.Content
 	fmt.Println("Response:", output)
 	err = saveToMD(Subchapters[0].Title, output)
 	if err != nil {
 		panic(err)
 	}
-	defer os.RemoveAll(".temp")
+	defer os.RemoveAll(".tmp")
 }
