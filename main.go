@@ -35,12 +35,27 @@ const (
 )
 
 type Dirkind struct {
-	Kind Dir
-	Path string
+	Kind         Dir
+	Path         string
+	RelativePath *string
 }
 
-var currentDir = Dirkind{Kind: CurrentDir, Path: func() string { dir, _ := os.Getwd(); return dir }()}
-var tmpDir = Dirkind{Kind: TmpDir, Path: func() string { dir, _ := os.MkdirTemp(currentDir.Path, ".tmp"); return dir }()}
+func (dk *Dirkind) SetRelativePath() {
+	getLastUri := func(uri string) string {
+		output := strings.Split(uri, "/")
+		return output[len(output)-1]
+	}(dk.Path)
+	dk.RelativePath = &getLastUri
+}
+
+var currentDir = Dirkind{Kind: CurrentDir,
+	Path:         func() string { dir, _ := os.Getwd(); return dir }(),
+	RelativePath: nil}
+
+var tmpDir = Dirkind{Kind: TmpDir,
+	Path:         func() string { dir, _ := os.MkdirTemp(currentDir.Path, ".tmp"); return dir }(),
+	RelativePath: nil,
+}
 
 var env = godotenv.Load()
 
@@ -210,6 +225,7 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 }
 
 func init() {
+	tmpDir.SetRelativePath()
 	initCheckServer := func(port int, description string) {
 		port_conv := strconv.Itoa(port)
 		url := "http://127.0.0.1:" + port_conv + "/"
@@ -238,6 +254,7 @@ func init() {
 }
 
 func main() {
+	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -246,6 +263,7 @@ func main() {
 		os.RemoveAll(tmpDir.Path)
 		os.Exit(0)
 	}()
+	// ☝️ it just works btw
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
 	c.OnRequest(func(r *colly.Request) {
@@ -258,7 +276,7 @@ func main() {
 	// 	Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
 	// })
 	// filePath, err := scanHTMLFiles("test_data")
-	filePath, err := ScanHTMLFiles(tmpDir.Path)
+	filePath, err := ScanHTMLFiles(*tmpDir.RelativePath)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -317,4 +335,5 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
+
 }

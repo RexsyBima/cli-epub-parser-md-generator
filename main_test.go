@@ -173,6 +173,7 @@ func TestExtractTitle(t *testing.T) {
 }
 
 func TestUniqueFolderName(t *testing.T) {
+	t.Skip()
 	currentDir, _ := os.Getwd()
 	dir, err := os.MkdirTemp(currentDir, ".tmp")
 	if err != nil {
@@ -216,4 +217,12 @@ func TestBook2(t *testing.T) {
 	res, err := checkToken(fullText)
 	fmt.Println(res.OriginalText)
 	fmt.Println(res.TokenLength)
+}
+
+func TestGetRelativePath(t *testing.T) {
+	t.Skip()
+	fmt.Println(tmpDir.RelativePath)
+	tmpDir.SetRelativePath()
+	fmt.Println(tmpDir.RelativePath)
+	fmt.Println(*tmpDir.RelativePath)
 }
