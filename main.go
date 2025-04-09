@@ -5,20 +5,27 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html/template"
+	"log"
+	"os/signal"
+	"syscall"
+
+	// "html/template"
+	// "log"
+
 	// "flag"
 	"fmt"
-	deepseek "github.com/cohesion-org/deepseek-go"
-	"github.com/gocolly/colly"
-	"github.com/joho/godotenv"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
+
+	"github.com/cohesion-org/deepseek-go"
+	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
 )
 
 // TODO: fix the system prompt or make it better
@@ -114,6 +121,7 @@ func scanHTMLFiles(folderPath string) ([]string, error) {
 }
 
 func checkToken(text string) (EncodedResponse, error) {
+	// TODO: change the token calling into local go function with go tiktoken check here https://github.com/pkoukk/tiktoken-go
 	url := "http://127.0.0.1:8080/encode"
 	// Text with newlines
 	// Create request payload
@@ -228,7 +236,7 @@ func init() {
 		client := &http.Client{}
 		_, err = client.Do(req)
 		if err != nil {
-			panic(err)
+			// panic(err)
 		}
 		fmt.Println(description)
 	}
@@ -238,7 +246,7 @@ func init() {
 	// cmd1.Stderr = os.Stderr
 	// fmt.Println("Starting python http server on http://localhost:8000")
 	initCheckServer(8000, "server running on port 8000, python simple http server")
-	initCheckServer(8080, "server running on port 8080, python tokenizer server")
+	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
 	if len(os.Args) < 2 {
 		os.RemoveAll(tmpDir.Path)
 		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
@@ -253,7 +261,89 @@ func init() {
 	}
 }
 
+func renderTemplate(tmplFile string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles(tmplFile)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tmpl.Execute(w, nil)
+	}
+}
+
+func handlerHomepage(w http.ResponseWriter, r *http.Request) {
+	// Set the content type to HTML
+	w.Header().Set("Content-Type", "text/html")
+	// Write HTML directly
+	fmt.Fprintf(w, `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Hello from Go</title>
+		</head>
+		<body>
+			<h1>Welcome to my Go server!</h1>
+			<p>This is an HTML response.</p>
+		</body>
+		</html>
+	`)
+}
+
+func handlerHomepage2(w http.ResponseWriter, r *http.Request) {
+	// Set the content type to HTML
+	w.Header().Set("Content-Type", "text/html")
+	// Write HTML directly
+	fmt.Fprintf(w, `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Hello from Go</title>
+		</head>
+		<body>
+			<h1>Welcome to my Go server!</h1>
+			<p>This is an HTML response.</p>
+		</body>
+		</html>
+	`)
+}
+
+func makeHandler(text string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `
+			<!DOCTYPE html>
+			<html>
+			<head><title>Custom Message</title></head>
+			<body>
+				%s
+			</body>
+			</html>
+		`, text)
+	}
+}
+
+func startHTTPServer() {
+	routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
+	fmt.Println(routes)
+	var href string
+	// Register handlers in a loop
+	for _, file := range routes {
+		http.HandleFunc("/"+file.Path, renderTemplate(file.Path))
+		filePathsep := strings.Split(file.Path, "/")
+		chapterName := filePathsep[len(filePathsep)-1]
+		href += "<a href='/" + file.Path + "'>" + chapterName + "</a> <br>"
+	}
+	http.HandleFunc("/", makeHandler(href))
+	log.Println("Server started at http://localhost:8000")
+	err := http.ListenAndServe(":8000", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
+	go startHTTPServer()
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -305,12 +395,12 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
-	tokenize, err := checkToken(fullText)
+	tokenize, _ := checkToken(fullText)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	// fmt.Println(tokenize.OriginalText)
+	fmt.Println(tokenize.OriginalText)
 	fmt.Println(tokenize.TokenLength)
 	fmt.Println(tokenize.OriginalText)
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))

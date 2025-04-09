@@ -226,3 +226,35 @@ func TestGetRelativePath(t *testing.T) {
 	fmt.Println(tmpDir.RelativePath)
 	fmt.Println(*tmpDir.RelativePath)
 }
+
+func TestScanHTMLFiles2(t *testing.T) {
+	var routes []string
+	bookName := "progit.epub"
+	err := ExtractEpub(bookName, tmpDir.Path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	files, _ := ScanHTMLFiles(tmpDir.Path)
+	for _, file := range files {
+		startIndex := strings.Index(file.Path, "/.tmp")
+		if startIndex != -1 {
+			subPath := file.Path[startIndex:]
+			routes = append(routes, subPath)
+		}
+	}
+	fmt.Println(routes)
+	defer os.RemoveAll(tmpDir.Path)
+}
+
+func TestSplitText(t *testing.T) {
+	fullPath := "/home/rexsybimatw/go/cli-epub-parser-md-generator/.tmp3823640299/EPUB/toc.xhtml"
+	// Find index where ".tmp" starts
+	startIndex := strings.Index(fullPath, "/.tmp")
+	if startIndex != -1 {
+		subPath := fullPath[startIndex:]
+		fmt.Println(subPath)
+	} else {
+		fmt.Println("'.tmp' not found in path")
+	}
+}
