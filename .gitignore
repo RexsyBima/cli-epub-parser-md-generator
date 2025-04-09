@@ -1,4 +1,5 @@
 test_data/
 .tmp/
+.tmp*/
 output/
 *.epub
