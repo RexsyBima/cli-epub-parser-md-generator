@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -174,25 +173,26 @@ func TestExtractTitle(t *testing.T) {
 }
 
 func TestUniqueFolderName(t *testing.T) {
-	t.Skip()
-	cwd, err := os.Getwd()
+	currentDir, _ := os.Getwd()
+	dir, err := os.MkdirTemp(currentDir, ".tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpDirPath := filepath.Join(cwd, ".tmp")
-	if err := os.MkdirAll(tmpDirPath, 0755); err != nil {
-		log.Fatal(err)
-	}
-	result, err := os.MkdirTemp(tmpDirPath, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(result)
-	os.MkdirAll(result, 0755)
+	fmt.Println(dir)
+	// defer os.RemoveAll(dir)
 }
 
 func TestBook2(t *testing.T) {
-	bookName := "progit.epub"
+	t.Skip()
+	var Subchapters = []Subchapter{}
+	c := colly.NewCollector()
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("Visiting", r.URL)
+	})
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
+	})
+	bookName := "book1.epub"
 	err := ExtractEpub(bookName, ".tmp")
 	filePath, err := ScanHTMLFiles(".tmp")
 	if err != nil {
@@ -203,12 +203,17 @@ func TestBook2(t *testing.T) {
 		texts := strings.Split(file.Path, "/")
 		fmt.Printf("%d: %s\n", i+1, texts[len(texts)-1])
 	}
-	var userInput string
 	fmt.Println("choose a chapter based on number")
-	fmt.Scanln(&userInput)
-	chapterNumber, err := strconv.Atoi(userInput)
-	if err != nil {
-		fmt.Println(err)
-		return
+	chapterNumber := 10
+	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1].Path)
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Printf("Request URL: %v | failed with response %v", r.Request.URL, err)
+	})
+	var fullText string
+	for _, subchapter := range Subchapters {
+		fullText += subchapter.Text
 	}
+	res, err := checkToken(fullText)
+	fmt.Println(res.OriginalText)
+	fmt.Println(res.TokenLength)
 }

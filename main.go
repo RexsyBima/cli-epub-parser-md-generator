@@ -26,7 +26,21 @@ var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked
 
 const outputPath string = "output"
 const outputTestPath string = "output_test"
-const bookName string = "progit.epub"
+
+type Dir uint
+
+const (
+	CurrentDir Dir = iota
+	TmpDir
+)
+
+type Dirkind struct {
+	Kind Dir
+	Path string
+}
+
+var currentDir = Dirkind{Kind: CurrentDir, Path: func() string { dir, _ := os.Getwd(); return dir }()}
+var tmpDir = Dirkind{Kind: TmpDir, Path: func() string { dir, _ := os.MkdirTemp(currentDir.Path, ".tmp"); return dir }()}
 
 var env = godotenv.Load()
 
@@ -214,10 +228,9 @@ func init() {
 	// fmt.Println("Starting python http server on http://localhost:8000")
 	initCheckServer(8000, "server running on port 8000, python simple http server")
 	initCheckServer(8080, "server running on port 8080, python tokenizer server")
-	// bookPtrArg := flag.String("book", "", "book to scan")
-	// flag.Parse()
-	// bookName := *bookPtrArg
-	err := ExtractEpub(bookName, ".tmp")
+	bookName := os.Args[1]
+	// err := ExtractEpub(bookName, ".tmp")
+	err := ExtractEpub(bookName, tmpDir.Path)
 	if err != nil {
 		fmt.Println(fmt.Errorf("set the correct book path, -book=somebook.epub").Error())
 		panic(err)
@@ -230,7 +243,7 @@ func main() {
 	go func() {
 		sig := <-sigs
 		fmt.Println("interrupt signal received, deleting temp folder", sig)
-		os.RemoveAll(".tmp")
+		os.RemoveAll(tmpDir.Path)
 		os.Exit(0)
 	}()
 	var Subchapters = []Subchapter{}
@@ -238,11 +251,14 @@ func main() {
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 	})
-	c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
+	c.OnHTML("body", func(e *colly.HTMLElement) {
 		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
 	})
+	// c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
+	// 	Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
+	// })
 	// filePath, err := scanHTMLFiles("test_data")
-	filePath, err := ScanHTMLFiles(".tmp")
+	filePath, err := ScanHTMLFiles(tmpDir.Path)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -300,5 +316,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer os.RemoveAll(".tmp")
+	defer os.RemoveAll(tmpDir.Path)
 }
