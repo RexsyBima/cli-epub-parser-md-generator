@@ -218,6 +218,7 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 	return htmlfiles, nil
 }
 
+// TODO: add way to to not run init function when i run go test, but whatever
 func init() {
 	tmpDir.SetRelativePath()
 	initCheckServer := func(port int, description string) {
