@@ -244,12 +244,17 @@ func init() {
 	// fmt.Println("Starting python http server on http://localhost:8000")
 	initCheckServer(8000, "server running on port 8000, python simple http server")
 	initCheckServer(8080, "server running on port 8080, python tokenizer server")
-	bookName := os.Args[1]
-	// err := ExtractEpub(bookName, ".tmp")
-	err := ExtractEpub(bookName, tmpDir.Path)
-	if err != nil {
-		fmt.Println(fmt.Errorf("set the correct book path, -book=somebook.epub").Error())
-		panic(err)
+	if len(os.Args) < 2 {
+		os.RemoveAll(tmpDir.Path)
+		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
+		os.Exit(1)
+	} else {
+		bookName := os.Args[1]
+		// err := ExtractEpub(bookName, ".tmp")
+		err := ExtractEpub(bookName, tmpDir.Path)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
