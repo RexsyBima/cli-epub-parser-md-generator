@@ -5,7 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	// "flag"
 	"fmt"
+	deepseek "github.com/cohesion-org/deepseek-go"
+	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,10 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	deepseek "github.com/cohesion-org/deepseek-go"
-	"github.com/gocolly/colly"
-	"github.com/joho/godotenv"
 )
 
 // TODO: fix the system prompt or make it better
@@ -26,6 +26,7 @@ var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked
 
 const outputPath string = "output"
 const outputTestPath string = "output_test"
+const bookName string = "progit.epub"
 
 var env = godotenv.Load()
 
@@ -183,7 +184,7 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 		if info.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(strings.ToLower(path), ".html") || strings.HasSuffix(strings.ToLower(path), ".htm") {
+		if strings.HasSuffix(strings.ToLower(path), ".html") || strings.HasSuffix(strings.ToLower(path), ".htm") || strings.HasSuffix(strings.ToLower(path), ".xhtml") || strings.HasSuffix(strings.ToLower(path), ".xhtm") {
 			htmlfiles = append(htmlfiles, HTMLFile{Path: path})
 		}
 		return nil
@@ -213,8 +214,12 @@ func init() {
 	// fmt.Println("Starting python http server on http://localhost:8000")
 	initCheckServer(8000, "server running on port 8000, python simple http server")
 	initCheckServer(8080, "server running on port 8080, python tokenizer server")
-	err := ExtractEpub("book1.epub", ".tmp")
+	// bookPtrArg := flag.String("book", "", "book to scan")
+	// flag.Parse()
+	// bookName := *bookPtrArg
+	err := ExtractEpub(bookName, ".tmp")
 	if err != nil {
+		fmt.Println(fmt.Errorf("set the correct book path, -book=somebook.epub").Error())
 		panic(err)
 	}
 }

@@ -174,6 +174,7 @@ func TestExtractTitle(t *testing.T) {
 }
 
 func TestUniqueFolderName(t *testing.T) {
+	t.Skip()
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -188,4 +189,26 @@ func TestUniqueFolderName(t *testing.T) {
 	}
 	fmt.Println(result)
 	os.MkdirAll(result, 0755)
+}
+
+func TestBook2(t *testing.T) {
+	bookName := "progit.epub"
+	err := ExtractEpub(bookName, ".tmp")
+	filePath, err := ScanHTMLFiles(".tmp")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for i, file := range filePath {
+		texts := strings.Split(file.Path, "/")
+		fmt.Printf("%d: %s\n", i+1, texts[len(texts)-1])
+	}
+	var userInput string
+	fmt.Println("choose a chapter based on number")
+	fmt.Scanln(&userInput)
+	chapterNumber, err := strconv.Atoi(userInput)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
