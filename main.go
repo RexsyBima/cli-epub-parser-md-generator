@@ -156,14 +156,12 @@ func ExtractEpub(epubPath string, targetDir string) error {
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("failed to create extraction directory: %v", err)
 	}
-
 	// Open the EPUB file
 	reader, err := zip.OpenReader(epubPath)
 	if err != nil {
 		return fmt.Errorf("error opening EPUB file: %v", err)
 	}
 	defer reader.Close()
-
 	// Extract each file
 	for _, file := range reader.File {
 		extractPath := filepath.Join(targetDir, file.Name)
@@ -173,26 +171,22 @@ func ExtractEpub(epubPath string, targetDir string) error {
 			os.MkdirAll(extractPath, 0755)
 			continue
 		}
-
 		// Make sure the parent directory exists
 		parentDir := filepath.Dir(extractPath)
 		if err := os.MkdirAll(parentDir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %v", parentDir, err)
 		}
-
 		// Create the file
 		outFile, err := os.Create(extractPath)
 		if err != nil {
 			return fmt.Errorf("failed to create file %s: %v", extractPath, err)
 		}
-
 		// Open the zipped file
 		zipFile, err := file.Open()
 		if err != nil {
 			outFile.Close()
 			return fmt.Errorf("failed to open zipped file %s: %v", file.Name, err)
 		}
-
 		// Copy the contents
 		_, err = io.Copy(outFile, zipFile)
 		outFile.Close()
