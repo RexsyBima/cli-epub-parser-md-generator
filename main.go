@@ -130,22 +130,22 @@ func checkToken(text string) (EncodedResponse, error) {
 	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return EncodedResponse{}, fmt.Errorf("error creating request: %w", err)
+		return EncodedResponse{OriginalText: text}, fmt.Errorf("error marshaling into json: %w", err)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return EncodedResponse{}, fmt.Errorf("error creating request: %w", err)
+		return EncodedResponse{OriginalText: text}, fmt.Errorf("error creating new request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return EncodedResponse{}, fmt.Errorf("error creating request: %w", err)
+		return EncodedResponse{OriginalText: text}, fmt.Errorf("error posting request bruh...: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return EncodedResponse{}, fmt.Errorf("error creating request: %w", err)
+		return EncodedResponse{OriginalText: text}, fmt.Errorf("error creating request: %w", err)
 	}
 	// Define the response struct
 	// Parse the response into the struct
@@ -226,41 +226,6 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 	return htmlfiles, nil
 }
 
-// TODO: add way to to not run init function when i run go test, but whatever
-func init() {
-	tmpDir.SetRelativePath()
-	initCheckServer := func(port int, description string) {
-		port_conv := strconv.Itoa(port)
-		url := "http://127.0.0.1:" + port_conv + "/"
-		req, err := http.NewRequest("GET", url, nil)
-		client := &http.Client{}
-		_, err = client.Do(req)
-		if err != nil {
-			// panic(err)
-		}
-		fmt.Println(description)
-	}
-	// TODO: run python http server from go?
-	// cmd1 := exec.Command("python", "-m", "http.server", "8000")
-	// cmd1.Stdout = os.Stdout
-	// cmd1.Stderr = os.Stderr
-	// fmt.Println("Starting python http server on http://localhost:8000")
-	initCheckServer(8000, "server running on port 8000, python simple http server")
-	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
-	if len(os.Args) < 2 {
-		os.RemoveAll(tmpDir.Path)
-		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
-		os.Exit(1)
-	} else {
-		bookName := os.Args[1]
-		// err := ExtractEpub(bookName, ".tmp")
-		err := ExtractEpub(bookName, tmpDir.Path)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
 func renderTemplate(tmplFile string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles(tmplFile)
@@ -325,7 +290,6 @@ func makeHandler(text string) http.HandlerFunc {
 
 func startHTTPServer() {
 	routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
-	fmt.Println(routes)
 	var href string
 	// Register handlers in a loop
 	for _, file := range routes {
@@ -342,8 +306,38 @@ func startHTTPServer() {
 	}
 }
 
+// TODO: add way to to not run init function when i run go test, but whatever
+func init() {
+	tmpDir.SetRelativePath()
+	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
+	if len(os.Args) < 2 {
+		os.RemoveAll(tmpDir.Path)
+		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
+		os.Exit(1)
+	} else {
+		bookName := os.Args[1]
+		// err := ExtractEpub(bookName, ".tmp")
+		err := ExtractEpub(bookName, tmpDir.Path)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func main() {
+	initCheckServer := func(port int, description string) {
+		port_conv := strconv.Itoa(port)
+		url := "http://127.0.0.1:" + port_conv + "/"
+		req, err := http.NewRequest("GET", url, nil)
+		client := &http.Client{}
+		_, err = client.Do(req)
+		if err != nil {
+			// panic(err)
+		}
+		fmt.Println(description)
+	}
 	go startHTTPServer()
+	initCheckServer(8000, "server running on port 8000, python simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -395,14 +389,11 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
-	tokenize, _ := checkToken(fullText)
+	tokenize, err := checkToken(fullText)
 	if err != nil {
 		fmt.Println(err)
-		return
 	}
-	fmt.Println(tokenize.OriginalText)
 	fmt.Println(tokenize.TokenLength)
-	fmt.Println(tokenize.OriginalText)
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
 	request := &deepseek.ChatCompletionRequest{

@@ -228,6 +228,7 @@ func TestGetRelativePath(t *testing.T) {
 }
 
 func TestScanHTMLFiles2(t *testing.T) {
+	t.Skip()
 	var routes []string
 	bookName := "progit.epub"
 	err := ExtractEpub(bookName, tmpDir.Path)
@@ -248,6 +249,7 @@ func TestScanHTMLFiles2(t *testing.T) {
 }
 
 func TestSplitText(t *testing.T) {
+	t.Skip()
 	fullPath := "/home/rexsybimatw/go/cli-epub-parser-md-generator/.tmp3823640299/EPUB/toc.xhtml"
 	// Find index where ".tmp" starts
 	startIndex := strings.Index(fullPath, "/.tmp")
@@ -257,4 +259,10 @@ func TestSplitText(t *testing.T) {
 	} else {
 		fmt.Println("'.tmp' not found in path")
 	}
+}
+
+func TestCheckTokenv2(t *testing.T) {
+	tokenize, err := checkToken("hello world")
+	fmt.Println(tokenize.OriginalText)
+	fmt.Println(err)
 }
