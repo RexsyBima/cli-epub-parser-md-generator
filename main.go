@@ -309,14 +309,14 @@ func init() {
 		os.RemoveAll(tmpDir.Path)
 		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
 		os.Exit(1)
-	} else {
-		bookName := os.Args[1]
-		// err := ExtractEpub(bookName, ".tmp")
-		err := ExtractEpub(bookName, tmpDir.Path)
-		if err != nil {
-			panic(err)
-		}
 	}
+	bookName := os.Args[1]
+	// err := ExtractEpub(bookName, ".tmp")
+	err := ExtractEpub(bookName, tmpDir.Path)
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func main() {
@@ -411,5 +411,4 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
-
 }

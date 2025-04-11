@@ -14,6 +14,21 @@ import (
 	"github.com/gocolly/colly"
 )
 
+type SomeMethod struct {
+	Bookmark string
+	Text     string
+}
+
+func (s SomeMethod) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Bookmark string
+		Text     string
+	}{
+		Bookmark: s.Bookmark,
+		Text:     s.Text,
+	})
+}
+
 func TestScrapeHTML(t *testing.T) {
 	t.Skip("skipping for now...")
 	var Subchapters = []Subchapter{}
@@ -265,4 +280,12 @@ func TestCheckTokenv2(t *testing.T) {
 	tokenize, err := checkToken("hello world")
 	fmt.Println(tokenize.OriginalText)
 	fmt.Println(err)
+}
+
+func TestDummyFunction(t *testing.T) {
+	someFunc := func(a, b, c, d, e, f, g string) string {
+		return a + b + c + d + e + f + g
+	}
+	x := someFunc("a", "b", "c", "d", "e", "f", "g")
+	fmt.Println(x)
 }
