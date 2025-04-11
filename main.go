@@ -118,6 +118,8 @@ func scanHTMLFiles(folderPath string) ([]string, error) {
 func checkToken(text string) (EncodedResponse, error) {
 	// TODO: change the token calling into local go function with go tiktoken check here https://github.com/pkoukk/tiktoken-go
 	url := "http://127.0.0.1:8080/encode"
+	var result EncodedResponse
+	result.OriginalText = text
 	// Text with newlines
 	// Create request payload
 	requestBody := map[string]string{
@@ -125,29 +127,28 @@ func checkToken(text string) (EncodedResponse, error) {
 	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return EncodedResponse{OriginalText: text}, fmt.Errorf("error marshaling into json: %w", err)
+		return result, fmt.Errorf("error marshaling into json: %w", err)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return EncodedResponse{OriginalText: text}, fmt.Errorf("error creating new request: %w", err)
+		return result, fmt.Errorf("error creating new request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return EncodedResponse{OriginalText: text}, fmt.Errorf("error posting request bruh...: %w", err)
+		return result, fmt.Errorf("error posting request bruh...: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return EncodedResponse{OriginalText: text}, fmt.Errorf("error creating request: %w", err)
+		return result, fmt.Errorf("error creating request: %w", err)
 	}
 	// Define the response struct
 	// Parse the response into the struct
-	var result EncodedResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return EncodedResponse{}, fmt.Errorf("error creating request: %w", err)
+		return result, fmt.Errorf("error creating request: %w", err)
 	}
 	return result, nil
 }
@@ -348,6 +349,7 @@ func main() {
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 	})
+	// TODO: fix the data-pdf-bookmark, it should capture an element named 'section'
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
 	})
@@ -384,11 +386,11 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
+	fmt.Println(fullText)
 	tokenize, err := checkToken(fullText)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(tokenize.TokenLength)
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
 	request := &deepseek.ChatCompletionRequest{

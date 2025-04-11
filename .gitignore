@@ -2,4 +2,6 @@ test_data/
 .tmp/
 .tmp*/
 output/
+book1/
+progit/
 *.epub
