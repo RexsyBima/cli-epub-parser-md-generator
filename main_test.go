@@ -277,15 +277,19 @@ func TestSplitText(t *testing.T) {
 }
 
 func TestCheckTokenv2(t *testing.T) {
+	t.Skip()
 	tokenize, err := checkToken("hello world")
 	fmt.Println(tokenize.OriginalText)
 	fmt.Println(err)
 }
 
-func TestDummyFunction(t *testing.T) {
-	someFunc := func(a, b, c, d, e, f, g string) string {
-		return a + b + c + d + e + f + g
+func TestIfCondition(t *testing.T) {
+	t.Skip()
+	someText := ""
+	if len(someText) == 0 {
+		fmt.Println("empty")
 	}
-	x := someFunc("a", "b", "c", "d", "e", "f", "g")
-	fmt.Println(x)
+}
+
+func Test2Parser(t *testing.T) {
 }

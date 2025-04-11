@@ -224,6 +224,10 @@ func ScanHTMLFiles(rootDir string) ([]HTMLFile, error) {
 
 func renderTemplate(tmplFile string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ext := strings.ToLower(filepath.Ext(tmplFile))
+		if ext == ".xhtml" {
+			w.Header().Set("Content-Type", "application/xhtml+xml")
+		}
 		tmpl, err := template.ParseFiles(tmplFile)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -285,6 +289,7 @@ func makeHandler(text string) http.HandlerFunc {
 }
 
 func startHTTPServer() {
+	// TODO: fix a way of xhtml files to be properly displayed
 	routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
 	var href string
 	// Register handlers in a loop
@@ -302,8 +307,24 @@ func startHTTPServer() {
 	}
 }
 
-// TODO: add way to to not run init function when i run go test, but whatever
-func init() {
+// // TODO: add way to to not run init function when i run go test, but whatever
+// func init() {
+// 	tmpDir.SetRelativePath()
+// 	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
+// 	if len(os.Args) < 2 {
+// 		os.RemoveAll(tmpDir.Path)
+// 		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
+// 		os.Exit(1)
+// 	}
+// 	bookName := os.Args[1]
+// 	// err := ExtractEpub(bookName, ".tmp")
+// 	err := ExtractEpub(bookName, tmpDir.Path)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
+
+func main() {
 	tmpDir.SetRelativePath()
 	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
 	if len(os.Args) < 2 {
@@ -317,10 +338,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-}
-
-func main() {
 	initCheckServer := func(port int, description string) {
 		port_conv := strconv.Itoa(port)
 		url := "http://127.0.0.1:" + port_conv + "/"
@@ -332,7 +349,10 @@ func main() {
 		}
 		fmt.Println(description)
 	}
+
+	// TODO: fix httpserver, for a while, use python local http server feature
 	go startHTTPServer()
+
 	initCheckServer(8000, "server running on port 8000, python simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	sigs := make(chan os.Signal, 1)
@@ -349,9 +369,14 @@ func main() {
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 	})
-	// TODO: fix the data-pdf-bookmark, it should capture an element named 'section'
 	c.OnHTML("body", func(e *colly.HTMLElement) {
-		Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
+		// Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
+		fmt.Println("len of text is: ", len(e.Text))
+		if len(e.Text) == 0 {
+			fmt.Println("emtpy text")
+			os.Exit(0)
+		}
+		Subchapters = append(Subchapters, NewSubchapter("data", e.Text))
 	})
 	// c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
 	// 	Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
@@ -372,12 +397,13 @@ func main() {
 	chapterNumber, err := strconv.Atoi(userInput)
 	if err != nil {
 		fmt.Println(err)
-		return
+		fmt.Println("changing user input to 10, means its in testing")
+		userInput = "10"
 	}
-	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1].Path)
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Request URL: %v | failed with response %v", r.Request.URL, err)
 	})
+	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1].Path)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -386,7 +412,6 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
-	fmt.Println(fullText)
 	tokenize, err := checkToken(fullText)
 	if err != nil {
 		fmt.Println(err)
@@ -413,4 +438,5 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
+
 }
