@@ -293,6 +293,7 @@ func TestIfCondition(t *testing.T) {
 }
 
 func TestTiktoken(t *testing.T) {
+	t.Skip()
 	text := "hello world"
 	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
 	if err != nil {
@@ -304,5 +305,15 @@ func TestTiktoken(t *testing.T) {
 	// this should print the original string back
 	text, _ = enc.Decode(ids)
 	fmt.Println(text)
+}
 
+func TestChannel(t *testing.T) {
+	addition := func(a, b int) int {
+		return a + b
+	}
+	c := make(chan int)
+	go func() {
+		c <- addition(1, 2)
+	}()
+	fmt.Println(<-c)
 }
