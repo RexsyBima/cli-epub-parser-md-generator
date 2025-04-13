@@ -6,6 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/cohesion-org/deepseek-go"
+	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
+	"github.com/tiktoken-go/tokenizer"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -17,11 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/cohesion-org/deepseek-go"
-	"github.com/gocolly/colly"
-	"github.com/joho/godotenv"
-	"github.com/tiktoken-go/tokenizer"
 )
 
 // TODO: fix the system prompt or make it better
