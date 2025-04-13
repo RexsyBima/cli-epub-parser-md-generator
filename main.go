@@ -423,10 +423,18 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
-	tokenize, err := checkTokenv2(fullText)
+	tokenizeChannel := make(chan EncodedResponse)
+	err = nil
+	go func() {
+		val, err2 := checkTokenv2(fullText)
+		tokenizeChannel <- val
+		err = err2
+	}()
+	// tokenize, err := checkTokenv2(fullText)
 	if err != nil {
 		fmt.Println(err)
 	}
+	tokenize := <-tokenizeChannel
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
 	request := &deepseek.ChatCompletionRequest{

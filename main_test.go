@@ -317,3 +317,20 @@ func TestChannel(t *testing.T) {
 	}()
 	fmt.Println(<-c)
 }
+
+func TestChannelIntegration(t *testing.T) {
+	var err error
+	fullText := "lorem ipsum"
+	tokenizeChannel := make(chan EncodedResponse)
+	go func() {
+		val, err2 := checkTokenv2(fullText)
+		tokenizeChannel <- val
+		err = err2
+	}()
+	// tokenize, err := checkTokenv2(fullText)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tokenize := <-tokenizeChannel
+	fmt.Println(tokenize)
+}
