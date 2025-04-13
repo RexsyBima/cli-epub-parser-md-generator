@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/tiktoken-go/tokenizer"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -291,5 +292,17 @@ func TestIfCondition(t *testing.T) {
 	}
 }
 
-func Test2Parser(t *testing.T) {
+func TestTiktoken(t *testing.T) {
+	text := "hello world"
+	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
+	if err != nil {
+		t.Error(err)
+	}
+	// this should print a list of token ids
+	ids, _, _ := enc.Encode(text)
+	fmt.Println(ids)
+	// this should print the original string back
+	text, _ = enc.Decode(ids)
+	fmt.Println(text)
+
 }

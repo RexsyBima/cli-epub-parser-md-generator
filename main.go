@@ -21,6 +21,7 @@ import (
 	"github.com/cohesion-org/deepseek-go"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
+	"github.com/tiktoken-go/tokenizer"
 )
 
 // TODO: fix the system prompt or make it better
@@ -78,7 +79,7 @@ type Subchapters []Subchapter
 
 type EncodedResponse struct {
 	OriginalText string `json:"original_text"`
-	EncodedText  []int  `json:"encoded_text"`
+	EncodedText  []uint `json:"encoded_text"`
 	TokenLength  int    `json:"token_length"`
 }
 
@@ -113,6 +114,17 @@ func scanHTMLFiles(folderPath string) ([]string, error) {
 		return nil, err
 	}
 	return htmlFiles, nil
+}
+
+func checkTokenv2(text string) (EncodedResponse, error) {
+	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
+	if err != nil {
+		return EncodedResponse{}, err
+	}
+	// this should print a list of token ids
+	ids, _, _ := enc.Encode(text)
+	return EncodedResponse{OriginalText: text, EncodedText: ids, TokenLength: len(ids)}, nil
+	// this should print the original string back
 }
 
 func checkToken(text string) (EncodedResponse, error) {
@@ -289,7 +301,6 @@ func makeHandler(text string) http.HandlerFunc {
 }
 
 func startHTTPServer() {
-	// TODO: fix a way of xhtml files to be properly displayed
 	routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
 	var href string
 	// Register handlers in a loop
@@ -350,10 +361,9 @@ func main() {
 		fmt.Println(description)
 	}
 
-	// TODO: fix httpserver, for a while, use python local http server feature
 	go startHTTPServer()
 
-	initCheckServer(8000, "server running on port 8000, python simple http server")
+	initCheckServer(8000, "server running on port 8000, go simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -394,11 +404,12 @@ func main() {
 	var userInput string
 	fmt.Println("choose a chapter based on number")
 	fmt.Scanln(&userInput)
-	chapterNumber, err := strconv.Atoi(userInput)
+	var chapterNumber int
+	chapterNumber, err = strconv.Atoi(userInput)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("changing user input to 10, means its in testing")
-		userInput = "10"
+		chapterNumber = 10
 	}
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Request URL: %v | failed with response %v", r.Request.URL, err)
@@ -412,7 +423,7 @@ func main() {
 	for _, subchapter := range Subchapters {
 		fullText += subchapter.Text
 	}
-	tokenize, err := checkToken(fullText)
+	tokenize, err := checkTokenv2(fullText)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -438,5 +449,4 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
-
 }
