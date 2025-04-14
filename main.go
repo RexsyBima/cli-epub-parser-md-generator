@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/cohesion-org/deepseek-go"
 	"github.com/gocolly/colly"
@@ -23,8 +24,8 @@ import (
 	"syscall"
 )
 
-// TODO: fix the system prompt or make it better
-var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting raw YouTube caption texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.`)
+// TODO: add new way to parse argument language, set default to english
+var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting book texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.`)
 
 const outputPath string = "output"
 const outputTestPath string = "output_test"
@@ -334,6 +335,28 @@ func startHTTPServer() {
 // 	}
 // }
 
+func readJson(filename string) ([]string, error) {
+	var result []string
+	data, err := os.ReadFile(filename)
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println("file not exist")
+		return result, nil
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func deleteTempFolders(folders []string) {
+	for _, folder := range folders {
+		err := os.RemoveAll(folder)
+		if os.IsNotExist(err) {
+			fmt.Println("Folder does not exist:", folder)
+		}
+	}
+}
+
 func main() {
 	tmpDir.SetRelativePath()
 	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
@@ -345,6 +368,10 @@ func main() {
 	bookName := os.Args[1]
 	// err := ExtractEpub(bookName, ".tmp")
 	err := ExtractEpub(bookName, tmpDir.Path)
+	// tmpDirs, err := readJson(".tmpDirs.json")
+	// tmpDirs = append(tmpDirs, tmpDir.Path)
+	// // tmpDirs
+	// defer deleteTempFolders(tmpDirs)
 	if err != nil {
 		panic(err)
 	}
@@ -456,4 +483,7 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
+
+	fmt.Println("len of text from deepseek is ", len(output))
+
 }

@@ -3,14 +3,16 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/tiktoken-go/tokenizer"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tiktoken-go/tokenizer"
 
 	"github.com/gocolly/colly"
 )
@@ -28,6 +30,11 @@ func (s SomeMethod) MarshalJSON() ([]byte, error) {
 		Bookmark: s.Bookmark,
 		Text:     s.Text,
 	})
+}
+
+func TestInit(t *testing.T) {
+	// delete tmpdir when test run,
+	os.RemoveAll(tmpDir.Path)
 }
 
 func TestScrapeHTML(t *testing.T) {
@@ -333,4 +340,70 @@ func TestChannelIntegration(t *testing.T) {
 	}
 	tokenize := <-tokenizeChannel
 	fmt.Println(tokenize)
+}
+
+func TestPurposefullyPanic(t *testing.T) {
+	t.Skip()
+	funcTest := func(a, b int) int {
+		return a / b
+	}
+	result := funcTest(10, 0)
+	fmt.Println(result)
+}
+
+func TestJsonSave(t *testing.T) {
+	fileName := "test.json"
+	data := []string{"hello", "world"}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(fileName, jsonData, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJsonLoad(t *testing.T) {
+	readJson := func(filename string) ([]string, error) {
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		var result []string
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	data, err := readJson("test.json")
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(data[0])
+	fmt.Println(data[1])
+}
+
+func TestJsonLoadNotExist(t *testing.T) {
+	readJson := func(filename string) ([]string, error) {
+		data, err := os.ReadFile(filename)
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println("file not exist")
+			return []string{}, nil
+		}
+		var result []string
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		fmt.Println("file found")
+		return result, nil
+	}
+	_, err := readJson("someJson.json")
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDeleteTMPFolders(t *testing.T) {
+	deleteTempFolders([]string{".tmp3/", ".tmp4/"})
 }
