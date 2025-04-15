@@ -5,3 +5,5 @@ output/
 book1/
 progit/
 *.epub
+*.json
+.todo

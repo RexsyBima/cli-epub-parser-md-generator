@@ -483,7 +483,15 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
-
-	fmt.Println("len of text from deepseek is ", len(output))
-
+	fmt.Println("encoded length before deepseek is: ", tokenize.TokenLength)
+	go func() {
+		val, err2 := checkTokenv2(output)
+		tokenizeChannel <- val
+		err = err2
+	}()
+	// tokenize, err := checkTokenv2(fullText)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("encoded length from deepseek is: ", tokenize.TokenLength)
 }
