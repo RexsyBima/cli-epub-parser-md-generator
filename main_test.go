@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cohesion-org/deepseek-go"
 	"github.com/tiktoken-go/tokenizer"
 
 	"github.com/gocolly/colly"
@@ -406,4 +408,32 @@ func TestJsonLoadNotExist(t *testing.T) {
 
 func TestDeleteTMPFolders(t *testing.T) {
 	deleteTempFolders([]string{".tmp3/", ".tmp4/"})
+}
+
+func TestDeepseek(t *testing.T) {
+	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+	text := `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ultricies vestibulum odio in semper. Aliquam aliquet mattis ipsum in hendrerit. Morbi quis metus faucibus leo vehicula accumsan sit amet id quam. Aenean vitae facilisis ligula. Phasellus lobortis lectus at massa egestas ultricies. Vivamus euismod eget orci a vestibulum. Duis vel sagittis ligula. Nam quis turpis at purus congue condimentum. Aliquam ac dictum lorem. Donec volutpat risus vel ante tempor, eget porta metus faucibus.
+
+Donec eu mauris elementum, rhoncus nunc non, rhoncus neque. Vivamus posuere maximus ipsum sodales vestibulum. Praesent tincidunt felis urna, in tristique nisl sagittis quis. In ultrices felis quis massa posuere semper. Fusce lacinia est odio, non venenatis lectus suscipit ac. Fusce quis lobortis orci, vel sodales tortor. Donec laoreet consectetur tellus, sed dictum quam feugiat eget. Nulla mattis consectetur justo, at dapibus diam commodo ut. Nulla facilisi. Curabitur non dui lacinia, mattis ante nec, mattis mauris.
+
+Cras justo nunc, condimentum ac nisl id, accumsan efficitur nunc. Morbi eros ipsum, rutrum sed velit in, faucibus dictum nisl. Vestibulum sed rutrum velit, vitae mollis mauris. Cras tincidunt justo sit amet purus consectetur luctus. Nam eget porta felis. Sed congue felis quis turpis posuere luctus. Pellentesque tincidunt leo justo, in blandit mi vehicula at. Nulla massa metus, sagittis nec velit quis, rhoncus finibus augue. Aliquam vel tempus justo. Nunc nec ultricies lectus, id ullamcorper orci.
+
+Maecenas accumsan lorem sed urna pharetra, in efficitur velit dignissim. Nullam hendrerit quis justo sed rutrum. Etiam lobortis commodo nulla vel rutrum. Integer sagittis ante a risus consectetur semper. Sed cursus, erat a efficitur mattis, metus est suscipit enim, at vestibulum lectus velit pretium ligula. Donec non imperdiet purus, in aliquam elit. Nunc varius, nunc sit amet dictum vehicula, mauris dolor facilisis diam, at mattis ipsum sapien eget ex. Nullam dapibus nunc non fermentum sollicitudin. Cras sed dui non nisi interdum laoreet ac nec diam. Sed pulvinar ultrices pharetra. Proin rhoncus interdum mi eget convallis. Praesent iaculis scelerisque dictum.
+
+Suspendisse massa risus, pellentesque feugiat suscipit ut, feugiat at urna. Ut sit amet viverra lorem. Etiam lectus arcu, tempus et est quis, varius sodales ipsum. Duis lobortis turpis risus, tincidunt mollis est dignissim et. Mauris pharetra non velit id tincidunt. Suspendisse finibus lectus nec diam scelerisque, id luctus turpis fermentum. Nam convallis elit ut odio dignissim, ut blandit massa commodo. Duis enim ex, aliquam sed erat a, faucibus hendrerit dolor.`
+	request := &deepseek.ChatCompletionRequest{
+		Model: deepseek.DeepSeekChat,
+		Messages: []deepseek.ChatCompletionMessage{
+			{Role: deepseek.ChatMessageRoleSystem, Content: systemPrompt},
+			{Role: deepseek.ChatMessageRoleUser, Content: text},
+		},
+	}
+	// Send the request and handle the response
+	deepseek_ctx := context.Background()
+	response, err := client.CreateChatCompletion(deepseek_ctx, request)
+	if err != nil {
+		t.Error(err)
+	}
+	output := response.Choices
+	fmt.Println(output)
 }

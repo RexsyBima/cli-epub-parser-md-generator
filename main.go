@@ -84,7 +84,6 @@ type EncodedResponse struct {
 }
 
 func saveToMD(filename, text string) error {
-	fmt.Println("Response:", text)
 	filename = fmt.Sprintf("%s/%s.md", outputPath, filename)
 	file, err := os.Create(filename)
 	if err != nil {
@@ -96,6 +95,7 @@ func saveToMD(filename, text string) error {
 		return err
 	}
 	defer file.Close()
+	defer fmt.Println("saved at: ", filename)
 	return nil
 }
 
@@ -181,7 +181,6 @@ func ExtractEpub(epubPath string, targetDir string) error {
 	// Extract each file
 	for _, file := range reader.File {
 		extractPath := filepath.Join(targetDir, file.Name)
-
 		// Create directories if needed
 		if file.FileInfo().IsDir() {
 			os.MkdirAll(extractPath, 0755)
@@ -311,7 +310,7 @@ func startHTTPServer() {
 		href += "<a href='/" + file.Path + "'>" + chapterName + "</a> <br>"
 	}
 	http.HandleFunc("/", makeHandler(href))
-	log.Println("Server started at http://localhost:8000")
+	// log.Println("Server started at http://localhost:8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
 		log.Fatal(err)
@@ -403,7 +402,8 @@ func main() {
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
 	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
+		// fmt.Println("Visiting", r.URL)
+		fmt.Println("Processing...")
 	})
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		// Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
@@ -412,7 +412,8 @@ func main() {
 			fmt.Println("emtpy text")
 			os.Exit(0)
 		}
-		Subchapters = append(Subchapters, NewSubchapter("data", e.Text))
+		// TODO: add a way to name the chapter
+		Subchapters = append(Subchapters, NewSubchapter("output", e.Text))
 	})
 	// c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {
 	// 	Subchapters = append(Subchapters, NewSubchapter(e.Attr("data-pdf-bookmark"), e.Text))
@@ -461,6 +462,7 @@ func main() {
 		fmt.Println(err)
 	}
 	tokenize := <-tokenizeChannel
+	fmt.Println("Original token length is: ", tokenize.TokenLength)
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
 	request := &deepseek.ChatCompletionRequest{
@@ -477,21 +479,22 @@ func main() {
 		panic(err)
 	}
 	output := response.Choices[0].Message.Content
-	fmt.Println("Response:", output)
-	err = saveToMD(Subchapters[0].Title, output)
+	err = saveToMD("foo", output)
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
-	fmt.Println("encoded length before deepseek is: ", tokenize.TokenLength)
+	tokenizeChannel2 := make(chan EncodedResponse)
+	err = nil
 	go func() {
-		val, err2 := checkTokenv2(output)
-		tokenizeChannel <- val
+		val, err2 := checkTokenv2(fullText)
+		tokenizeChannel2 <- val
 		err = err2
 	}()
 	// tokenize, err := checkTokenv2(fullText)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("encoded length from deepseek is: ", tokenize.TokenLength)
+	tokenize2 := <-tokenizeChannel2
+	fmt.Println("After deepseek token length is: ", tokenize2.TokenLength)
 }
