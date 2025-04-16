@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/cohesion-org/deepseek-go"
 	"github.com/gocolly/colly"
@@ -387,22 +388,39 @@ func main() {
 	}
 
 	// go startHTTPServer()
+
+	// go func() {
+	// 	routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
+	// 	var href string
+	// 	// Register handlers in a loop
+	// 	for _, file := range routes {
+	// 		http.HandleFunc("/"+file.Path, renderTemplate(file.Path))
+	// 		filePathsep := strings.Split(file.Path, "/")
+	// 		chapterName := filePathsep[len(filePathsep)-1]
+	// 		href += "<a href='/" + file.Path + "'>" + chapterName + "</a> <br>"
+	// 	}
+	// 	http.HandleFunc("/", makeHandler(href))
+	// 	// log.Println("Server started at http://localhost:8000")
+	// 	err := http.ListenAndServe(":8000", nil)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }()
+
 	go func() {
-		routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
-		var href string
-		// Register handlers in a loop
-		for _, file := range routes {
-			http.HandleFunc("/"+file.Path, renderTemplate(file.Path))
-			filePathsep := strings.Split(file.Path, "/")
-			chapterName := filePathsep[len(filePathsep)-1]
-			href += "<a href='/" + file.Path + "'>" + chapterName + "</a> <br>"
-		}
-		http.HandleFunc("/", makeHandler(href))
-		// log.Println("Server started at http://localhost:8000")
-		err := http.ListenAndServe(":8000", nil)
-		if err != nil {
-			log.Fatal(err)
-		}
+		port := flag.String("port", "8000", "Port number")
+		flag.Parse()
+		// Directory you want to serve
+		dir, _ := os.Getwd()
+		fs := http.FileServer(http.Dir(dir))
+
+		// Serve the files at root path "/"
+		http.Handle("/", fs)
+
+		// Start the server
+		log.Printf("Starting server on :%s...", *port)
+		addressPort := fmt.Sprintf(":%s", *port)
+		log.Fatal(http.ListenAndServe(addressPort, nil))
 	}()
 
 	initCheckServer(8000, "server running on port 8000, go simple http server")
