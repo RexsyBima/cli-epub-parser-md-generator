@@ -358,6 +358,15 @@ func deleteTempFolders(folders []string) {
 }
 
 func main() {
+	book := flag.String("book", "", "book name, ex: book.epub")
+	portStr := flag.String("port", "8000", "Port number")
+	flag.Parse()
+	fmt.Println(*portStr)
+	if len(*book) == 0 {
+		fmt.Println("Usage: cli-epub-parser-md-generator -book <book_name>")
+		fmt.Println("Optional to give the custom port usage: cli-epub-parser-md-generator -book <book_name> -port <portnumber>")
+		os.Exit(1)
+	}
 	tmpDir.SetRelativePath()
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -373,9 +382,8 @@ func main() {
 		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
 		os.Exit(1)
 	}
-	bookName := os.Args[1]
 	// err := ExtractEpub(bookName, ".tmp")
-	err := ExtractEpub(bookName, tmpDir.Path)
+	err := ExtractEpub(*book, tmpDir.Path)
 	// tmpDirs, err := readJson(".tmpDirs.json")
 	// tmpDirs = append(tmpDirs, tmpDir.Path)
 	// // tmpDirs
@@ -416,8 +424,6 @@ func main() {
 	// }()
 
 	go func() {
-		port := flag.String("port", "8000", "Port number")
-		flag.Parse()
 		// Directory you want to serve
 		dir, _ := os.Getwd()
 		fs := http.FileServer(http.Dir(dir))
@@ -426,12 +432,12 @@ func main() {
 		http.Handle("/", fs)
 
 		// Start the server
-		log.Printf("Starting server on :%s...", *port)
-		addressPort := fmt.Sprintf(":%s", *port)
+		log.Printf("Starting server on :%s...", *portStr)
+		addressPort := fmt.Sprintf(":%s", *portStr)
 		log.Fatal(http.ListenAndServe(addressPort, nil))
 	}()
-
-	initCheckServer(8000, "server running on port 8000, go simple http server")
+	port, err := strconv.Atoi(*portStr)
+	initCheckServer(port, "server running on port 8000, go simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
 	// ☝️ it just works btw
 	var Subchapters = []Subchapter{}
@@ -475,7 +481,8 @@ func main() {
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Printf("Request URL: %v | failed with response %v", r.Request.URL, err)
 	})
-	err = c.Visit("http://127.0.0.1:8000/" + filePath[chapterNumber-1].Path)
+	targetUrl := fmt.Sprintf("http://127.0.0.1:%s/%s", *portStr, filePath[chapterNumber-1].Path)
+	err = c.Visit(targetUrl)
 	if err != nil {
 		fmt.Println(err)
 		return
