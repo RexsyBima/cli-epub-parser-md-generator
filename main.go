@@ -318,23 +318,6 @@ func startHTTPServer() {
 	}
 }
 
-// // TODO: add way to to not run init function when i run go test, but whatever
-// func init() {
-// 	tmpDir.SetRelativePath()
-// 	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
-// 	if len(os.Args) < 2 {
-// 		os.RemoveAll(tmpDir.Path)
-// 		fmt.Println("Usage: cli-epub-parser-md-generator <epub_file>")
-// 		os.Exit(1)
-// 	}
-// 	bookName := os.Args[1]
-// 	// err := ExtractEpub(bookName, ".tmp")
-// 	err := ExtractEpub(bookName, tmpDir.Path)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
-
 func readJson(filename string) ([]string, error) {
 	var result []string
 	data, err := os.ReadFile(filename)
