@@ -500,6 +500,7 @@ func main() {
 	fmt.Println("Original token length is: ", tokenize.TokenLength)
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
+
 	request := &deepseek.ChatCompletionRequest{
 		Model: deepseek.DeepSeekChat,
 		Messages: []deepseek.ChatCompletionMessage{
@@ -507,6 +508,7 @@ func main() {
 			{Role: deepseek.ChatMessageRoleUser, Content: tokenize.OriginalText},
 		},
 	}
+
 	// Send the request and handle the response
 	deepseek_ctx := context.Background()
 	response, err := client.CreateChatCompletion(deepseek_ctx, request)

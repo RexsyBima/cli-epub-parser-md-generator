@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,9 +15,8 @@ import (
 	"testing"
 
 	"github.com/cohesion-org/deepseek-go"
-	"github.com/tiktoken-go/tokenizer"
-
 	"github.com/gocolly/colly"
+	"github.com/tiktoken-go/tokenizer"
 )
 
 type SomeMethod struct {
@@ -410,30 +410,67 @@ func TestDeleteTMPFolders(t *testing.T) {
 	deleteTempFolders([]string{".tmp3/", ".tmp4/"})
 }
 
-func TestDeepseek(t *testing.T) {
+func TestDeepseekJson(t *testing.T) {
+	type deepseekOutput struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+
+	type Book struct {
+		ISBN            string `json:"isbn"`
+		Title           string `json:"title"`
+		Author          string `json:"author"`
+		Genre           string `json:"genre"`
+		PublicationYear int    `json:"publication_year"`
+		Available       bool   `json:"available"`
+	}
+
+	type Books struct {
+		Books []Book `json:"books"`
+	}
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
-	text := `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ultricies vestibulum odio in semper. Aliquam aliquet mattis ipsum in hendrerit. Morbi quis metus faucibus leo vehicula accumsan sit amet id quam. Aenean vitae facilisis ligula. Phasellus lobortis lectus at massa egestas ultricies. Vivamus euismod eget orci a vestibulum. Duis vel sagittis ligula. Nam quis turpis at purus congue condimentum. Aliquam ac dictum lorem. Donec volutpat risus vel ante tempor, eget porta metus faucibus.
-
-Donec eu mauris elementum, rhoncus nunc non, rhoncus neque. Vivamus posuere maximus ipsum sodales vestibulum. Praesent tincidunt felis urna, in tristique nisl sagittis quis. In ultrices felis quis massa posuere semper. Fusce lacinia est odio, non venenatis lectus suscipit ac. Fusce quis lobortis orci, vel sodales tortor. Donec laoreet consectetur tellus, sed dictum quam feugiat eget. Nulla mattis consectetur justo, at dapibus diam commodo ut. Nulla facilisi. Curabitur non dui lacinia, mattis ante nec, mattis mauris.
-
-Cras justo nunc, condimentum ac nisl id, accumsan efficitur nunc. Morbi eros ipsum, rutrum sed velit in, faucibus dictum nisl. Vestibulum sed rutrum velit, vitae mollis mauris. Cras tincidunt justo sit amet purus consectetur luctus. Nam eget porta felis. Sed congue felis quis turpis posuere luctus. Pellentesque tincidunt leo justo, in blandit mi vehicula at. Nulla massa metus, sagittis nec velit quis, rhoncus finibus augue. Aliquam vel tempus justo. Nunc nec ultricies lectus, id ullamcorper orci.
-
-Maecenas accumsan lorem sed urna pharetra, in efficitur velit dignissim. Nullam hendrerit quis justo sed rutrum. Etiam lobortis commodo nulla vel rutrum. Integer sagittis ante a risus consectetur semper. Sed cursus, erat a efficitur mattis, metus est suscipit enim, at vestibulum lectus velit pretium ligula. Donec non imperdiet purus, in aliquam elit. Nunc varius, nunc sit amet dictum vehicula, mauris dolor facilisis diam, at mattis ipsum sapien eget ex. Nullam dapibus nunc non fermentum sollicitudin. Cras sed dui non nisi interdum laoreet ac nec diam. Sed pulvinar ultrices pharetra. Proin rhoncus interdum mi eget convallis. Praesent iaculis scelerisque dictum.
-
-Suspendisse massa risus, pellentesque feugiat suscipit ut, feugiat at urna. Ut sit amet viverra lorem. Etiam lectus arcu, tempus et est quis, varius sodales ipsum. Duis lobortis turpis risus, tincidunt mollis est dignissim et. Mauris pharetra non velit id tincidunt. Suspendisse finibus lectus nec diam scelerisque, id luctus turpis fermentum. Nam convallis elit ut odio dignissim, ut blandit massa commodo. Duis enim ex, aliquam sed erat a, faucibus hendrerit dolor.`
-	request := &deepseek.ChatCompletionRequest{
-		Model: deepseek.DeepSeekChat,
+	// systemPrompt := `Provide blog post in JSON format.
+	// Please provide the JSON in the following format example: {"title": "How to be healthy", "content": "to be healthy you can try do some upper exercises"}`
+	// userPrompt := "a blog post about health for strengthening lower body, please return the json format"
+	prompt := `Provide a blogpost details in JSON format. 
+	Please provide the JSON in the following format example: {"title": "How to be healthy", "content": "to be healthy you can try do some upper exercises"}`
+	ctx := context.Background()
+	resp, err := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
+		Model: "deepseek-chat", // Or another suitable model
 		Messages: []deepseek.ChatCompletionMessage{
-			{Role: deepseek.ChatMessageRoleSystem, Content: systemPrompt},
-			{Role: deepseek.ChatMessageRoleUser, Content: text},
+			// {Role: deepseek.ChatMessageRoleSystem, Content: systemPrompt},
+			{Role: deepseek.ChatMessageRoleUser, Content: prompt},
 		},
-	}
-	// Send the request and handle the response
-	deepseek_ctx := context.Background()
-	response, err := client.CreateChatCompletion(deepseek_ctx, request)
+		JSONMode: true,
+	})
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Failed to create chat completion: %v", err)
 	}
-	output := response.Choices
-	fmt.Println(output)
+	if resp == nil || len(resp.Choices) == 0 {
+		t.Fatal("No response or choices found")
+	}
+	log.Printf("Response: %s", resp.Choices[0].Message.Content)
+	extractor := deepseek.NewJSONExtractor(nil)
+	var output deepseekOutput
+	// var books Books
+	if err := extractor.ExtractJSON(resp, &output); err != nil {
+		t.Fatalf("Failed to extract JSON: %v", err)
+	}
+	fmt.Println(output.Content)
+	fmt.Println("--------------------")
+	fmt.Println(output.Title)
+}
+
+func TestGetDeepseekAllModels(t *testing.T) {
+	t.Skip()
+	func() {
+		client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+		ctx := context.Background()
+		models, err := deepseek.ListAllModels(client, ctx)
+		if err != nil {
+			t.Errorf("Error listing models: %v", err)
+		}
+		fmt.Printf("\n%+v\n", *models)
+	}()
+
 }
