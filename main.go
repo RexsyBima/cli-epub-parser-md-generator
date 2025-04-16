@@ -386,7 +386,24 @@ func main() {
 		fmt.Println(description)
 	}
 
-	go startHTTPServer()
+	// go startHTTPServer()
+	go func() {
+		routes, _ := ScanHTMLFiles(*tmpDir.RelativePath)
+		var href string
+		// Register handlers in a loop
+		for _, file := range routes {
+			http.HandleFunc("/"+file.Path, renderTemplate(file.Path))
+			filePathsep := strings.Split(file.Path, "/")
+			chapterName := filePathsep[len(filePathsep)-1]
+			href += "<a href='/" + file.Path + "'>" + chapterName + "</a> <br>"
+		}
+		http.HandleFunc("/", makeHandler(href))
+		// log.Println("Server started at http://localhost:8000")
+		err := http.ListenAndServe(":8000", nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	initCheckServer(8000, "server running on port 8000, go simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
@@ -484,17 +501,4 @@ func main() {
 		panic(err)
 	}
 	defer os.RemoveAll(tmpDir.Path)
-	tokenizeChannel2 := make(chan EncodedResponse)
-	err = nil
-	go func() {
-		val, err2 := checkTokenv2(fullText)
-		tokenizeChannel2 <- val
-		err = err2
-	}()
-	// tokenize, err := checkTokenv2(fullText)
-	if err != nil {
-		fmt.Println(err)
-	}
-	tokenize2 := <-tokenizeChannel2
-	fmt.Println("After deepseek token length is: ", tokenize2.TokenLength)
 }
