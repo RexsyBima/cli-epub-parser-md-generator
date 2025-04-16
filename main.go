@@ -25,7 +25,6 @@ import (
 	"syscall"
 )
 
-// TODO: add new way to parse argument language, set default to english
 var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting book texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.
 
 	please return the user response in json format example: {"title": "How to be healthy", "content": "to be healthy you can try do some upper exercises"}`)
@@ -131,7 +130,6 @@ func checkTokenv2(text string) (EncodedResponse, error) {
 }
 
 func checkToken(text string) (EncodedResponse, error) {
-	// TODO: change the token calling into local go function with go tiktoken check here https://github.com/pkoukk/tiktoken-go
 	url := "http://127.0.0.1:8080/encode"
 	var result EncodedResponse
 	result.OriginalText = text
@@ -449,7 +447,6 @@ func main() {
 			fmt.Println("emtpy text")
 			os.Exit(0)
 		}
-		// TODO: add a way to name the chapter
 		Subchapters = append(Subchapters, NewSubchapter("output", e.Text))
 	})
 	// c.OnHTML("section[data-pdf-bookmark][data-type='sect1']", func(e *colly.HTMLElement) {

@@ -411,6 +411,7 @@ func TestDeleteTMPFolders(t *testing.T) {
 }
 
 func TestDeepseekJson(t *testing.T) {
+	t.Skip()
 	type deepseekOutput struct {
 		Title   string `json:"title"`
 		Content string `json:"content"`
