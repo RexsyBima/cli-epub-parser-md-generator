@@ -26,7 +26,9 @@ import (
 )
 
 // TODO: add new way to parse argument language, set default to english
-var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting book texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.`)
+var systemPrompt string = fmt.Sprintf(`You are an AI transformation agent tasked with converting book texts about knowledge into a polished, engaging, and readable blog post. Your responsibilities include: - **Paraphrasing**: Transform the original caption text into fresh, original content while preserving the key information and insights. - **Structure**: Organize the content into a well-defined structure featuring a captivating introduction, clearly delineated subheadings in the body, and a strong conclusion. - **Engagement**: Ensure the blog post is outstanding by using a professional yet conversational tone, creating smooth transitions, and emphasizing clarity and readability. - **Retention of Key Elements**: Maintain all essential elements and core ideas from the original text, while enhancing the narrative to captivate the reader. - **Adaptation**: Simplify technical details if necessary, ensuring that the transformed content is accessible to a broad audience without losing depth or accuracy. - **Quality**: Aim for a high-quality article that is both informative and engaging, ready for publication. Follow these guidelines to generate a comprehensive, coherent, and outstanding blog post from the provided YouTube captions text. Your final output should be **only** the paraphrased text, styled in Markdown format, and in english language.
+
+	please return the user response in json format example: {"title": "How to be healthy", "content": "to be healthy you can try do some upper exercises"}`)
 
 const outputPath string = "output"
 const outputTestPath string = "output_test"
@@ -498,6 +500,12 @@ func main() {
 	}
 	tokenize := <-tokenizeChannel
 	fmt.Println("Original token length is: ", tokenize.TokenLength)
+
+	type deepseekOutput struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+
 	client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
 	// Create a chat completion request
 
@@ -507,16 +515,22 @@ func main() {
 			{Role: deepseek.ChatMessageRoleSystem, Content: systemPrompt},
 			{Role: deepseek.ChatMessageRoleUser, Content: tokenize.OriginalText},
 		},
+		JSONMode: true,
 	}
 
 	// Send the request and handle the response
 	deepseek_ctx := context.Background()
-	response, err := client.CreateChatCompletion(deepseek_ctx, request)
+	extractor := deepseek.NewJSONExtractor(nil)
 	if err != nil {
 		panic(err)
 	}
-	output := response.Choices[0].Message.Content
-	err = saveToMD("foo", output)
+	response, err := client.CreateChatCompletion(deepseek_ctx, request)
+	var output deepseekOutput
+
+	if err := extractor.ExtractJSON(response, &output); err != nil {
+		panic(err)
+	}
+	err = saveToMD(output.Title, output.Content)
 	if err != nil {
 		panic(err)
 	}
