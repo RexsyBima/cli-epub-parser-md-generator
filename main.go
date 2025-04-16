@@ -359,6 +359,14 @@ func deleteTempFolders(folders []string) {
 
 func main() {
 	tmpDir.SetRelativePath()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		fmt.Println("interrupt signal received, deleting temp folder", sig)
+		os.RemoveAll(tmpDir.Path)
+		os.Exit(0)
+	}()
 	// initCheckServer(8080, "server running on port 8080, python tokenizer server")
 	if len(os.Args) < 2 {
 		os.RemoveAll(tmpDir.Path)
@@ -425,14 +433,6 @@ func main() {
 
 	initCheckServer(8000, "server running on port 8000, go simple http server")
 	// create channel so that when user exit program by pressing ctrl+c, the temp folder is deleted
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		fmt.Println("interrupt signal received, deleting temp folder", sig)
-		os.RemoveAll(tmpDir.Path)
-		os.Exit(0)
-	}()
 	// ☝️ it just works btw
 	var Subchapters = []Subchapter{}
 	c := colly.NewCollector()
